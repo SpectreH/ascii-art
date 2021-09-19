@@ -1,10 +1,14 @@
 package main
 
 import (
+	"ascii-art/errors"
 	"fmt"
 	"io/ioutil"
 	"os"
 )
+
+var BANNER_TEMPLATE_PACK string
+var FLAG_LIST []string
 
 // Every character will have own id by ascii-table and own form. The last one we save in 2d array
 type Banner struct {
@@ -12,29 +16,41 @@ type Banner struct {
 	asciiSymbol [8][]rune
 }
 
+type Flag struct {
+	class string
+	value string
+}
+
 func main() {
-	if len(os.Args) != 3 {
-		fmt.Println("Error! Missing required command-line argument.")
-		os.Exit(0)
+	if len(os.Args) != 3 && len(os.Args) != 4 {
+		errors.PrintErrorMessage(0)
+	}
+
+	FLAG_LIST = []string{"reverse", "color", "output", "align"}
+	BANNER_TEMPLATE_PACK = os.Args[2] + ".txt"
+
+	var flagToApplyData Flag
+
+	if len(os.Args) == 4 {
+		flagToApplyData = DiscoverFlagType(os.Args[3])
 	}
 
 	var bannerTemplateList []Banner = LoadTemplatePack()
 	var transformedInput [][]rune = TransformInput(os.Args[1])
-
 	var bannersToPrint [][]Banner = CollectNeededBanners(transformedInput, bannerTemplateList)
-
 	PrintBanners(bannersToPrint)
+	fmt.Println(flagToApplyData)
 }
 
 // Loads all symbols from text file with ascii-characters and returns them in array
 func LoadTemplatePack() []Banner {
 	var result []Banner
-	var bannerTemplatePack string = os.Args[2] + ".txt"
 
-	file, err := ioutil.ReadFile(bannerTemplatePack)
+	file, err := ioutil.ReadFile(BANNER_TEMPLATE_PACK)
 	CheckFile(err)
 	text := TranslateToRuneSlice(file)
 
+	fmt.Println(file)
 	fmt.Println(text)
 
 	var bannerToApply Banner
@@ -156,7 +172,7 @@ func PrintBanners(banners [][]Banner) {
 
 func CheckFile(e error) {
 	if e != nil {
-		fmt.Println("Error. Missing file")
+		errors.PrintErrorMessage(1)
 		os.Exit(1)
 	}
 }
@@ -169,4 +185,56 @@ func TranslateToRuneSlice(bytes []byte) []rune {
 	}
 
 	return text
+}
+
+func DiscoverFlagType(flag string) Flag {
+	var result Flag
+	var flagInRune []rune = []rune(flag)
+	var flagFound bool = false
+
+	if flagInRune[0] == 45 && flagInRune[1] == 45 {
+		for i := 0; i < len(FLAG_LIST); i++ {
+			wantedFlag := []rune(FLAG_LIST[i])
+			for k := 0; k < len(wantedFlag); k++ {
+				if flagInRune[k+2] == wantedFlag[k] {
+					flagFound = true
+					continue
+				} else {
+					flagFound = false
+					break
+				}
+			}
+
+			if flagFound {
+				result.class = FLAG_LIST[i]
+				FindFlagValue(&result, flagInRune)
+				break
+			}
+		}
+	}
+
+	if !flagFound {
+		errors.PrintErrorMessage(0)
+		return result
+	} else {
+		return result
+	}
+}
+
+func FindFlagValue(flag *Flag, values []rune) {
+	var valueResult string
+
+	if 3+len(flag.class) == len(values) || 3+len(flag.class) > len(values) {
+		errors.PrintErrorMessage(4)
+	}
+
+	if values[2+len(flag.class)] == 61 {
+		for i := 3 + len(flag.class); i < len(values); i++ {
+			valueResult = valueResult + string(values[i])
+		}
+	} else {
+		errors.PrintErrorMessage(4)
+	}
+
+	flag.value = valueResult
 }
