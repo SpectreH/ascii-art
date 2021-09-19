@@ -6,16 +6,15 @@ import (
 	"os"
 )
 
-var bannerTemplatePack string = "standard.txt"
-
+// Every character will have own id by ascii-table and own form. The last one we save in 2d array
 type Banner struct {
 	id          int
 	asciiSymbol [8][]rune
 }
 
 func main() {
-	if len(os.Args) != 2 {
-		fmt.Println("Error! Must be (or at least) only one command-line argument.")
+	if len(os.Args) != 3 {
+		fmt.Println("Error! Missing required command-line argument.")
 		os.Exit(0)
 	}
 
@@ -27,22 +26,38 @@ func main() {
 	PrintBanners(bannersToPrint)
 }
 
+// Loads all symbols from text file with ascii-characters and returns them in array
 func LoadTemplatePack() []Banner {
 	var result []Banner
+	var bannerTemplatePack string = os.Args[2] + ".txt"
 
 	file, err := ioutil.ReadFile(bannerTemplatePack)
 	CheckFile(err)
 	text := TranslateToRuneSlice(file)
 
+	fmt.Println(text)
+
 	var bannerToApply Banner
-	var textIndex int = 1
+	var textIndex int
+
+	if text[0] == 10 {
+		textIndex = 1
+	} else {
+		textIndex = 2
+	}
 
 	for i := 32; i < 127; i++ {
 		var tempArr [8][]rune
 
 		for k := 0; k < 8; k++ {
 			for l := 0; l < 32; l++ {
-				if text[textIndex] == 10 {
+
+				if text[textIndex] == 13 {
+					if text[textIndex+1] == 10 {
+						textIndex = textIndex + 2
+						break
+					}
+				} else if text[textIndex] == 10 {
 					textIndex++
 					break
 				}
@@ -56,12 +71,17 @@ func LoadTemplatePack() []Banner {
 		bannerToApply.asciiSymbol = tempArr
 		result = append(result, bannerToApply)
 
-		textIndex = textIndex + 1
+		if i != 126 && text[textIndex] == 13 {
+			textIndex = textIndex + 2
+		} else {
+			textIndex++
+		}
 	}
 
 	return result
 }
 
+// Transform string text to 2d rune array. We separate chars by rows (If we have "/n" it means that we add new row to array)
 func TransformInput(text string) [][]rune {
 	var result [][]rune
 
@@ -90,11 +110,9 @@ func TransformInput(text string) [][]rune {
 	return result
 }
 
+// With transformed string - here we try to find needed ascii-symbol and save it in to 2d array. Here we also seperate ascii-symbol by rows like in previous function
 func CollectNeededBanners(charList [][]rune, bannerList []Banner) [][]Banner {
 	var result [][]Banner
-
-	var newLineBanner Banner
-	newLineBanner.id = 10
 
 	for i := 0; i < len(charList); i++ {
 		if result == nil {
@@ -119,6 +137,7 @@ func CollectNeededBanners(charList [][]rune, bannerList []Banner) [][]Banner {
 	return result
 }
 
+// Prints all ascii-characters by our 2d banner array what we have built. Nil array means new-line
 func PrintBanners(banners [][]Banner) {
 	for i := 0; i < len(banners); i++ {
 		if banners[i] == nil {
