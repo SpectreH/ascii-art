@@ -9,6 +9,11 @@ import (
 	"os"
 )
 
+// TODO refactore check step in ReadBannerFromFile()
+// TODO start programm without string line-argument if we have --reverse flag
+// TODO (optional) use instead of DiscoverFlagType() and FindFlagValue() - functions from package flag (standard golang package)
+// TODO (optional) use default texture pack - standard.txt if user didn't give to us what textures to use
+
 var BANNER_TEMPLATE_PACK string
 var FLAG_LIST []string
 
@@ -235,6 +240,8 @@ func ApplyFlag(flagToApplyData Flag, bannersToSave [][]Banner, bannerTemplateLis
 		SaveBannerInToFile(flagToApplyData.value, bannersToSave)
 	} else if flagToApplyData.class == "reverse" {
 		ReadBannerFromFile(flagToApplyData.value, bannerTemplateList)
+	} else {
+		return
 	}
 
 	os.Exit(0)
