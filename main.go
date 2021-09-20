@@ -41,7 +41,7 @@ func main() {
 	var transformedInput [][]rune = TransformInput(os.Args[1])
 	var bannersToPrint [][]Banner = CollectNeededBanners(transformedInput, bannerTemplateList)
 
-	ApplyFlag(flagToApplyData, bannersToPrint)
+	ApplyFlag(flagToApplyData, bannersToPrint, bannerTemplateList)
 
 	PrintBanners(bannersToPrint)
 }
@@ -230,11 +230,14 @@ func FindFlagValue(flag *Flag, values []rune) {
 	flag.value = valueResult
 }
 
-func ApplyFlag(flagToApplyData Flag, banners [][]Banner) {
+func ApplyFlag(flagToApplyData Flag, bannersToSave [][]Banner, bannerTemplateList []Banner) {
 	if flagToApplyData.class == "output" {
-		SaveBannerInToFile(flagToApplyData.value, banners)
-		os.Exit(0)
+		SaveBannerInToFile(flagToApplyData.value, bannersToSave)
+	} else if flagToApplyData.class == "reverse" {
+		ReadBannerFromFile(flagToApplyData.value, bannerTemplateList)
 	}
+
+	os.Exit(0)
 }
 
 func SaveBannerInToFile(fileName string, bannersToSave [][]Banner) {
@@ -259,4 +262,48 @@ func SaveBannerInToFile(fileName string, bannersToSave [][]Banner) {
 	_, _ = dataWriter.WriteString("\n")
 	dataWriter.Flush()
 	file.Close()
+}
+
+func ReadBannerFromFile(fileName string, banners []Banner) {
+	file, err := ioutil.ReadFile(fileName)
+	CheckFile(err)
+	text := converters.TranslateToRuneSlice(file)
+
+	var charCounterInTheRow int = 1
+	for i := 0; i < len(text); i++ {
+		if text[i] != 10 {
+			charCounterInTheRow++
+		} else {
+			break
+		}
+	}
+
+	var symbolFound bool = false
+	var resultString string
+	var saveIndex int = 0
+	var startIndex int = 0
+	for i := 0; i < len(banners); i++ {
+		symbolFound = false
+		for k := 0; k < len(banners[i].asciiSymbol[0]); k++ {
+			if text[k+startIndex] == banners[i].asciiSymbol[0][k] && text[k+startIndex+charCounterInTheRow] == banners[i].asciiSymbol[1][k] &&
+				text[k+startIndex+charCounterInTheRow*2] == banners[i].asciiSymbol[2][k] && text[k+startIndex+charCounterInTheRow*3] == banners[i].asciiSymbol[3][k] &&
+				text[k+startIndex+charCounterInTheRow*4] == banners[i].asciiSymbol[4][k] && text[k+startIndex+charCounterInTheRow*5] == banners[i].asciiSymbol[5][k] &&
+				text[k+startIndex+charCounterInTheRow*6] == banners[i].asciiSymbol[6][k] && text[k+startIndex+charCounterInTheRow*7] == banners[i].asciiSymbol[7][k] {
+				symbolFound = true
+				saveIndex = k + 1
+			} else {
+				saveIndex = startIndex
+				symbolFound = false
+				break
+			}
+		}
+
+		if symbolFound {
+			startIndex = startIndex + saveIndex
+			resultString = resultString + string(banners[i].id)
+			i = 0
+		}
+	}
+
+	fmt.Println(resultString)
 }
