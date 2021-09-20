@@ -1,7 +1,9 @@
 package main
 
 import (
+	"ascii-art/converters"
 	"ascii-art/errors"
+	"bufio"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -38,8 +40,10 @@ func main() {
 	var bannerTemplateList []Banner = LoadTemplatePack()
 	var transformedInput [][]rune = TransformInput(os.Args[1])
 	var bannersToPrint [][]Banner = CollectNeededBanners(transformedInput, bannerTemplateList)
+
+	ApplyFlag(flagToApplyData, bannersToPrint)
+
 	PrintBanners(bannersToPrint)
-	fmt.Println(flagToApplyData)
 }
 
 // Loads all symbols from text file with ascii-characters and returns them in array
@@ -48,10 +52,7 @@ func LoadTemplatePack() []Banner {
 
 	file, err := ioutil.ReadFile(BANNER_TEMPLATE_PACK)
 	CheckFile(err)
-	text := TranslateToRuneSlice(file)
-
-	fmt.Println(file)
-	fmt.Println(text)
+	text := converters.TranslateToRuneSlice(file)
 
 	var bannerToApply Banner
 	var textIndex int
@@ -177,16 +178,6 @@ func CheckFile(e error) {
 	}
 }
 
-func TranslateToRuneSlice(bytes []byte) []rune {
-	var text []rune
-
-	for i := range bytes {
-		text = append(text, rune(bytes[i]))
-	}
-
-	return text
-}
-
 func DiscoverFlagType(flag string) Flag {
 	var result Flag
 	var flagInRune []rune = []rune(flag)
@@ -237,4 +228,35 @@ func FindFlagValue(flag *Flag, values []rune) {
 	}
 
 	flag.value = valueResult
+}
+
+func ApplyFlag(flagToApplyData Flag, banners [][]Banner) {
+	if flagToApplyData.class == "output" {
+		SaveBannerInToFile(flagToApplyData.value, banners)
+		os.Exit(0)
+	}
+}
+
+func SaveBannerInToFile(fileName string, bannersToSave [][]Banner) {
+	file, err := os.OpenFile(fileName, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	CheckFile(err)
+
+	dataWriter := bufio.NewWriter(file)
+	for i := 0; i < len(bannersToSave); i++ {
+		if bannersToSave[i] == nil {
+			_, _ = dataWriter.WriteString("\n")
+			continue
+		}
+
+		for k := 0; k < 8; k++ {
+			for d := 0; d < len(bannersToSave[i]); d++ {
+				_, _ = dataWriter.WriteString(string(bannersToSave[i][d].asciiSymbol[k]))
+			}
+			_, _ = dataWriter.WriteString("\n")
+		}
+	}
+
+	_, _ = dataWriter.WriteString("\n")
+	dataWriter.Flush()
+	file.Close()
 }
