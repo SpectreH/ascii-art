@@ -6,7 +6,10 @@ import (
 	"bufio"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"os"
+	"os/exec"
+	"strconv"
 )
 
 // TODO refactore check step in ReadBannerFromFile()
@@ -47,8 +50,6 @@ func main() {
 	var bannersToPrint [][]Banner = CollectNeededBanners(transformedInput, bannerTemplateList)
 
 	ApplyFlag(flagToApplyData, bannersToPrint, bannerTemplateList)
-
-	PrintBanners(bannersToPrint)
 }
 
 // Loads all symbols from text file with ascii-characters and returns them in array
@@ -235,13 +236,17 @@ func FindFlagValue(flag *Flag, values []rune) {
 	flag.value = valueResult
 }
 
-func ApplyFlag(flagToApplyData Flag, bannersToSave [][]Banner, bannerTemplateList []Banner) {
+func ApplyFlag(flagToApplyData Flag, userBanners [][]Banner, bannerTemplateList []Banner) {
 	if flagToApplyData.class == "output" {
-		SaveBannerInToFile(flagToApplyData.value, bannersToSave)
+		SaveBannerInToFile(flagToApplyData.value, userBanners)
 	} else if flagToApplyData.class == "reverse" {
 		ReadBannerFromFile(flagToApplyData.value, bannerTemplateList)
-	} else {
+	} else if flagToApplyData.class == "align" {
+		UseAlignByMode(flagToApplyData.value, userBanners)
+	} else if flagToApplyData.class == "color" {
 		return
+	} else {
+		PrintBanners(userBanners)
 	}
 
 	os.Exit(0)
@@ -314,3 +319,73 @@ func ReadBannerFromFile(fileName string, banners []Banner) {
 
 	fmt.Println(resultString)
 }
+
+func GetTerminalWindowsSize() int64 {
+	cmd := exec.Command("stty", "size")
+	cmd.Stdin = os.Stdin
+	out, err := cmd.Output()
+
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	out = RemoveSliceElement(out, len(out)-1)
+	if terminalLength, err := strconv.ParseInt(string(out[3:]), 10, 32); err == nil {
+		return terminalLength
+	} else {
+		return -1
+	}
+}
+
+func RemoveSliceElement(slice []byte, s int) []byte {
+	return append(slice[:s], slice[s+1:]...)
+}
+
+func UseAlignByMode(mode string, userBanners [][]Banner) {
+	var alignSymbol [8][]rune
+	var alignBanner Banner
+	var resultBanners [][]Banner
+	var totalBannersLenght int
+	var alignBannersAmount int64
+
+	for i := 0; i < len(alignSymbol); i++ {
+		alignSymbol[i] = append(alignSymbol[i], 32)
+	}
+
+	alignBanner.asciiSymbol = alignSymbol
+
+	for i := 0; i < len(userBanners); i++ {
+		totalBannersLenght = 0
+
+		for a := 0; a < len(userBanners[i]); a++ {
+			totalBannersLenght = totalBannersLenght + len(userBanners[i][a].asciiSymbol[0])
+		}
+
+		if mode == "center" {
+			alignBannersAmount = (GetTerminalWindowsSize() - int64(totalBannersLenght)) / 2
+		} else if mode == "right" {
+			alignBannersAmount = GetTerminalWindowsSize() - int64(totalBannersLenght)
+		} else if mode == "justify" {
+		} else if mode == "left" {
+			alignBannersAmount = 0
+		} else {
+			errors.PrintErrorMessage(5)
+		}
+
+		resultBanners = append(resultBanners, nil)
+
+		for k := 0; int64(k) < alignBannersAmount; k++ {
+			resultBanners[i] = append(resultBanners[i], alignBanner)
+		}
+
+		userBanners[i] = append(resultBanners[i], userBanners[i]...)
+	}
+
+	PrintBanners(userBanners)
+}
+
+// func insert(a [][]Banner, index int, value Banner) [][]Banner {
+// 	a = append(a[:index+1], a[index:]...) // index < len(a)
+// 	a[0][index] = value
+// 	return a
+// }
