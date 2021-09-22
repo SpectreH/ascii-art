@@ -17,6 +17,7 @@ import (
 // TODO (optional) use instead of DiscoverFlagType() and FindFlagValue() - functions from package flag (standard golang package)
 // TODO (optional) use default texture pack - standard.txt if user didn't give to us what textures to use
 
+var DEFAULT_PACK string = "standard.txt"
 var BANNER_TEMPLATE_PACK string
 var FLAG_LIST []string
 var COLOR_LIST []Color
@@ -25,12 +26,12 @@ var COLOR_LIST []Color
 type Banner struct {
 	id          int
 	asciiSymbol [8][]rune
+	color       Color
 }
 
 type Flag struct {
 	class string
 	value string
-	color Color
 }
 
 type Color struct {
@@ -39,17 +40,16 @@ type Color struct {
 }
 
 func main() {
-	if len(os.Args) != 3 && len(os.Args) != 4 {
-		errors.PrintErrorMessage(0)
-	}
-
 	FLAG_LIST = []string{"reverse", "color", "output", "align"}
-	BANNER_TEMPLATE_PACK = os.Args[2] + ".txt"
 	COLOR_LIST = LoadColors()
+	BANNER_TEMPLATE_PACK = DEFAULT_PACK
 
 	var flagToApplyData Flag
-
-	if len(os.Args) == 4 {
+	if len(os.Args) == 2 {
+		if DiscoverFlagType(os.Args[1]).class == "reverse" {
+			flagToApplyData = DiscoverFlagType(os.Args[1])
+		}
+	} else if len(os.Args) == 4 || len(os.Args) == 5 {
 		flagToApplyData = DiscoverFlagType(os.Args[3])
 	}
 
@@ -63,10 +63,18 @@ func main() {
 // Loads all symbols from text file with ascii-characters and returns them in array
 func LoadTemplatePack() []Banner {
 	var result []Banner
+	var file []byte
+	var text []rune
 
-	file, err := ioutil.ReadFile(BANNER_TEMPLATE_PACK)
-	CheckFile(err)
-	text := converters.TranslateToRuneSlice(file)
+	if len(os.Args) == 2 {
+		file, _ = ioutil.ReadFile(DEFAULT_PACK)
+	} else {
+		_, err := ioutil.ReadFile(os.Args[2] + ".txt")
+		CheckFile(err)
+		file, _ = ioutil.ReadFile(os.Args[2] + ".txt")
+	}
+
+	text = converters.TranslateToRuneSlice(file)
 
 	var bannerToApply Banner
 	var textIndex int
@@ -100,6 +108,7 @@ func LoadTemplatePack() []Banner {
 
 		bannerToApply.id = i
 		bannerToApply.asciiSymbol = tempArr
+		bannerToApply.color = COLOR_LIST[0]
 		result = append(result, bannerToApply)
 
 		if i != 126 && text[textIndex] == 13 {
@@ -171,8 +180,8 @@ func CollectNeededBanners(charList [][]rune, bannerList []Banner) [][]Banner {
 // Prints all ascii-characters by our 2d banner array what we have built. Nil array means new-line
 func PrintBanners(banners [][]Banner) {
 	//test := []byte{27, 91, 51, 56, 59, 53, 59, 49, 57, 56, 109}
-	test2 := []byte{27, 91, 51, 56, 59, 53, 59, 57, 52, 109}
-	defaultColor := []byte{27, 91, 48, 109}
+	// test2 := []byte{27, 91, 51, 56, 59, 53, 59, 57, 52, 109}
+	// defaultColor := []byte{27, 91, 48, 109}
 
 	// cmd, err := exec.Command("/bin/sh", "test.sh").Output()
 	// if err != nil {
@@ -187,22 +196,11 @@ func PrintBanners(banners [][]Banner) {
 		}
 		for k := 0; k < 8; k++ {
 			for d := 0; d < len(banners[i]); d++ {
-				if d == 1 {
-					fmt.Print(string(test2))
-				} else {
-					fmt.Print(string(defaultColor))
-				}
+				fmt.Print(string(banners[i][d].color.code))
 				fmt.Print(string(banners[i][d].asciiSymbol[k]))
 			}
 			fmt.Println()
 		}
-	}
-}
-
-func CheckFile(e error) {
-	if e != nil {
-		errors.PrintErrorMessage(1)
-		os.Exit(1)
 	}
 }
 
@@ -232,8 +230,8 @@ func DiscoverFlagType(flag string) Flag {
 		}
 	}
 
-	if !flagFound {
-		errors.PrintErrorMessage(0)
+	if !flagFound && (len(os.Args) == 1 || len(os.Args) == 4) {
+		errors.PrintErrorMessage(3)
 		return result
 	} else {
 		return result
@@ -266,8 +264,9 @@ func ApplyFlag(flagToApplyData Flag, userBanners [][]Banner, bannerTemplateList 
 	} else if flagToApplyData.class == "align" {
 		UseAlignByMode(flagToApplyData.value, userBanners)
 	} else if flagToApplyData.class == "color" {
+		bannersToColor := FindColorOptions()
+		ApplyColorToBanners(bannersToColor, &userBanners, flagToApplyData)
 		PrintBanners(userBanners)
-		return
 	} else {
 		PrintBanners(userBanners)
 	}
@@ -276,8 +275,7 @@ func ApplyFlag(flagToApplyData Flag, userBanners [][]Banner, bannerTemplateList 
 }
 
 func SaveBannerInToFile(fileName string, bannersToSave [][]Banner) {
-	file, err := os.OpenFile(fileName, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-	CheckFile(err)
+	file, _ := os.OpenFile(fileName, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 
 	dataWriter := bufio.NewWriter(file)
 	for i := 0; i < len(bannersToSave); i++ {
@@ -473,4 +471,72 @@ func LoadColors() []Color {
 	}
 
 	return result
+}
+
+func CheckFile(err error) {
+	if err != nil {
+		errors.PrintErrorMessage(1)
+	}
+}
+
+func FindColorOptions() []int {
+	var indexesToColorInByte [2][]byte
+	var indexesToColorInInt []int
+	var currentNumber int = 0
+
+	if len(os.Args) == 5 {
+		if len(os.Args[4]) != 2 || len(os.Args[4]) != 1 {
+			if os.Args[4][0] == 91 && os.Args[4][len(os.Args[4])-1] == 93 {
+				for i := 1; i < len(os.Args[4])-1; i++ {
+					if os.Args[4][i] == 45 {
+						currentNumber++
+						continue
+					}
+					indexesToColorInByte[currentNumber] = append(indexesToColorInByte[currentNumber], (os.Args[4][i]))
+				}
+			} else {
+				return indexesToColorInInt
+			}
+		}
+	} else {
+		return indexesToColorInInt
+	}
+
+	for i := 0; i < len(indexesToColorInByte); i++ {
+		aByteToInt, _ := strconv.Atoi(string(indexesToColorInByte[i]))
+		indexesToColorInInt = append(indexesToColorInInt, aByteToInt)
+	}
+
+	return indexesToColorInInt
+}
+
+func ApplyColorToBanners(colorIndexes []int, userBanners *[][]Banner, flagToApplyData Flag) {
+	var amountToColor int
+
+	if len(colorIndexes) == 0 {
+		amountToColor = len((*userBanners)[0]) - 1
+		colorIndexes = append(colorIndexes, 0)
+		colorIndexes = append(colorIndexes, len((*userBanners)[0])-1)
+	} else if (colorIndexes[1] - colorIndexes[0]) < 0 {
+		errors.PrintErrorMessage(6)
+	} else if len(colorIndexes) == 1 {
+		amountToColor = 1
+	} else {
+		amountToColor = (colorIndexes[1] - colorIndexes[0])
+	}
+
+	if colorIndexes[1] >= len((*userBanners)[0]) {
+		errors.PrintErrorMessage(6)
+	}
+
+	for i := 0; i < amountToColor; i++ {
+		for k := colorIndexes[0]; k < colorIndexes[1]+1; k++ {
+			for m := 0; m < len(COLOR_LIST); m++ {
+				if COLOR_LIST[m].name == flagToApplyData.value {
+					(*userBanners)[0][k].color = COLOR_LIST[m]
+					break
+				}
+			}
+		}
+	}
 }
