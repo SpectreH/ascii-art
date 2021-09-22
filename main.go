@@ -19,6 +19,7 @@ import (
 
 var BANNER_TEMPLATE_PACK string
 var FLAG_LIST []string
+var COLOR_LIST []Color
 
 // Every character will have own id by ascii-table and own form. The last one we save in 2d array
 type Banner struct {
@@ -29,6 +30,12 @@ type Banner struct {
 type Flag struct {
 	class string
 	value string
+	color Color
+}
+
+type Color struct {
+	name string
+	code []byte
 }
 
 func main() {
@@ -38,6 +45,7 @@ func main() {
 
 	FLAG_LIST = []string{"reverse", "color", "output", "align"}
 	BANNER_TEMPLATE_PACK = os.Args[2] + ".txt"
+	COLOR_LIST = LoadColors()
 
 	var flagToApplyData Flag
 
@@ -162,14 +170,28 @@ func CollectNeededBanners(charList [][]rune, bannerList []Banner) [][]Banner {
 
 // Prints all ascii-characters by our 2d banner array what we have built. Nil array means new-line
 func PrintBanners(banners [][]Banner) {
+	//test := []byte{27, 91, 51, 56, 59, 53, 59, 49, 57, 56, 109}
+	test2 := []byte{27, 91, 51, 56, 59, 53, 59, 57, 52, 109}
+	defaultColor := []byte{27, 91, 48, 109}
+
+	// cmd, err := exec.Command("/bin/sh", "test.sh").Output()
+	// if err != nil {
+	// 	fmt.Printf("error %s", err)
+	// }
+	// fmt.Print(cmd)
+
 	for i := 0; i < len(banners); i++ {
 		if banners[i] == nil {
 			fmt.Println()
 			continue
 		}
-
 		for k := 0; k < 8; k++ {
 			for d := 0; d < len(banners[i]); d++ {
+				if d == 1 {
+					fmt.Print(string(test2))
+				} else {
+					fmt.Print(string(defaultColor))
+				}
 				fmt.Print(string(banners[i][d].asciiSymbol[k]))
 			}
 			fmt.Println()
@@ -244,6 +266,7 @@ func ApplyFlag(flagToApplyData Flag, userBanners [][]Banner, bannerTemplateList 
 	} else if flagToApplyData.class == "align" {
 		UseAlignByMode(flagToApplyData.value, userBanners)
 	} else if flagToApplyData.class == "color" {
+		PrintBanners(userBanners)
 		return
 	} else {
 		PrintBanners(userBanners)
@@ -386,7 +409,7 @@ func UseAlignByMode(mode string, userBanners [][]Banner) {
 			for n := 0; int64(n) < tempVar2; n++ {
 				for a := 0; a < len(userBanners[i]); a++ {
 					if userBanners[i][a].id == 32 {
-						tempVar = insert(tempVar, a, alignBanner)
+						tempVar = Insert(tempVar, a, alignBanner)
 						userBanners[i] = tempVar
 						a++
 
@@ -399,7 +422,7 @@ func UseAlignByMode(mode string, userBanners [][]Banner) {
 
 			terminalWindowsSizeRemainder := ((GetTerminalWindowsSize() - int64(totalBannersLenght)) % int64(len(spacePos)))
 			for a := 0; int64(a) < terminalWindowsSizeRemainder; a++ {
-				tempVar = insert(tempVar, lastSpaceIndex, alignBanner)
+				tempVar = Insert(tempVar, lastSpaceIndex, alignBanner)
 				userBanners[i] = tempVar
 			}
 		} else if mode == "left" {
@@ -420,7 +443,7 @@ func UseAlignByMode(mode string, userBanners [][]Banner) {
 	PrintBanners(userBanners)
 }
 
-func insert(a []Banner, index int, value Banner) []Banner {
+func Insert(a []Banner, index int, value Banner) []Banner {
 	if len(a) == index {
 		return append(a, value)
 	}
@@ -428,4 +451,26 @@ func insert(a []Banner, index int, value Banner) []Banner {
 	a = append(a[:index+1], a[index:]...) // index < len(a)
 	a[index] = value
 	return a
+}
+
+func LoadColors() []Color {
+	var result []Color
+	var colorToAppend Color
+	colorNames := []string{"white", "red", "yellow", "orange", "blue", "green", "purple", "brown"}
+	colorCodes := [][]byte{{27, 91, 48, 109},
+		{27, 91, 51, 56, 59, 53, 59, 49, 109},
+		{27, 91, 51, 56, 59, 53, 59, 49, 49, 109},
+		{27, 91, 51, 56, 59, 53, 59, 50, 48, 56, 109},
+		{27, 91, 51, 56, 59, 53, 59, 52, 109},
+		{27, 91, 51, 56, 59, 53, 59, 56, 50, 109},
+		{27, 91, 51, 56, 59, 53, 59, 49, 50, 57, 109},
+		{27, 91, 51, 56, 59, 53, 59, 57, 52, 109}}
+
+	for i := 0; i < len(colorNames); i++ {
+		colorToAppend.name = colorNames[i]
+		colorToAppend.code = colorCodes[i]
+		result = append(result, colorToAppend)
+	}
+
+	return result
 }
