@@ -347,6 +347,7 @@ func UseAlignByMode(mode string, userBanners [][]Banner) {
 	var resultBanners [][]Banner
 	var totalBannersLenght int
 	var alignBannersAmount int64
+	var lastSpaceIndex int
 
 	for i := 0; i < len(alignSymbol); i++ {
 		alignSymbol[i] = append(alignSymbol[i], 32)
@@ -366,6 +367,41 @@ func UseAlignByMode(mode string, userBanners [][]Banner) {
 		} else if mode == "right" {
 			alignBannersAmount = GetTerminalWindowsSize() - int64(totalBannersLenght)
 		} else if mode == "justify" {
+			var tempVar []Banner
+			tempVar = userBanners[i]
+			var spacePos []int
+
+			for n := 0; n < len(userBanners[i]); n++ {
+				if userBanners[i][n].id == 32 {
+					spacePos = append(spacePos, n)
+				}
+			}
+
+			if len(spacePos) == 0 {
+				break
+			}
+
+			tempVar2 := ((GetTerminalWindowsSize() - int64(totalBannersLenght)) / int64(len(spacePos)))
+
+			for n := 0; int64(n) < tempVar2; n++ {
+				for a := 0; a < len(userBanners[i]); a++ {
+					if userBanners[i][a].id == 32 {
+						tempVar = insert(tempVar, a, alignBanner)
+						userBanners[i] = tempVar
+						a++
+
+						if n == int(tempVar2)-1 {
+							lastSpaceIndex = a
+						}
+					}
+				}
+			}
+
+			terminalWindowsSizeRemainder := ((GetTerminalWindowsSize() - int64(totalBannersLenght)) % int64(len(spacePos)))
+			for a := 0; int64(a) < terminalWindowsSizeRemainder; a++ {
+				tempVar = insert(tempVar, lastSpaceIndex, alignBanner)
+				userBanners[i] = tempVar
+			}
 		} else if mode == "left" {
 			alignBannersAmount = 0
 		} else {
@@ -384,8 +420,12 @@ func UseAlignByMode(mode string, userBanners [][]Banner) {
 	PrintBanners(userBanners)
 }
 
-// func insert(a [][]Banner, index int, value Banner) [][]Banner {
-// 	a = append(a[:index+1], a[index:]...) // index < len(a)
-// 	a[0][index] = value
-// 	return a
-// }
+func insert(a []Banner, index int, value Banner) []Banner {
+	if len(a) == index {
+		return append(a, value)
+	}
+
+	a = append(a[:index+1], a[index:]...) // index < len(a)
+	a[index] = value
+	return a
+}
