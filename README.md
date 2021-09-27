@@ -23,6 +23,10 @@ Available options:
 * <code>--color</code> - Set ASCII-art color
 * <code>--reverse</code> - Transform ASCII-art to string
 
+Available colors: <code>red, yellow, orange, blue, green, purple, brown</code>
+
+Available aligns: <code>justify, right, left, center</code>
+
 ## Examples
 ```
 go run . "hello" standard
