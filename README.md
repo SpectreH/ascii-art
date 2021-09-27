@@ -80,3 +80,19 @@ cat -e banner.txt
 go run . --reverse=banner.txt
 hello
 ```
+## Additional information
+
+Only standard go packages were in use. In <code>tests</code> folder you can find test files for each flag.
+
+To run test use:
+```
+bash tests\<filename>.sh
+```
+
+## Author
+
+* SpectreH (https://github.com/SpectreH)
+
+## License
+
+This software is released under the MIT License, see LICENSE.
