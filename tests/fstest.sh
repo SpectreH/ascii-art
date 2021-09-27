@@ -1,4 +1,3 @@
-cd ..
 go run . "hello" standard
 go run . "hello world" shadow
 go run . "nice 2 meet you" thinkertoy
