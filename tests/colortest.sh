@@ -1,7 +1,3 @@
-<<<<<<< HEAD
-=======
-cd ..
->>>>>>> c1c7ce11f2e1f2f10715d3a5acc47b74e26bdafc
 go run . "hello world" "standard" --color=red
 go run . "1 + 1 = 2" "standard" --color=green
 go run . "(%&) ??" "standard" --color=yellow [1-6]
