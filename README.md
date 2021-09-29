@@ -96,7 +96,3 @@ bash tests\<filename>.sh
 ## Author
 
 * SpectreH (https://github.com/SpectreH)
-
-## License
-
-This software is released under the MIT License, see LICENSE.
